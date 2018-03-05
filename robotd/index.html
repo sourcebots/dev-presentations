@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/purple.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+<section>
+        <img src="source_bots_white.svg" class="stretch" style="border:none; background:none; box-shadow:none; margin:20%"/>
+</section>
+<section data-background-color="#000" data-transition="fade">
+        <h1>RobotD</h1>
+</section>
+<section data-background-video="Sourcebots_StingV2_MaskedBlack.mp4">
+</section>
+<section>
+    <img src="software_stack_robotd.svg" class="stretch" style="background:white"/>
+</section>
+<section>
+    <img src="robotd_structure.svg" class="stretch" style="background:white"/>
+    <p> Note: There's a plan to rename 'board' to something more generic</p>
+</section>
+<section>
+    <section>
+        <h2>Aside: MetaClasses</h2>
+    <p> Warning: Advanced Python ahead </p>
+
+    </section>
+    <section>
+    <h3> What is a metaclass?</h3>
+    <p> A way of defining how a class is created.</p>
+    </section>
+    <section>
+    <h3> How do I make a metaclass?</h3>
+<pre><code class="python">class BoardMeta(type):
+    ...
+</code></pre>
+    </section>
+    <section>
+    <h3> What can I do with a metaclass?</h3>
+<pre><code class="python">class BoardMeta(type):
+
+    def __new__(cls, name, bases, attrs):
+        # Create the class
+        cls = type.__new__(cls, name, bases, attrs)
+        # Do stuff
+        ...
+        # return it
+        return cls
+</code></pre>
+    <p>You can do stuff <em>Before</em> the class is created.</p>
+    </section>
+    <section>
+    <h3> How do I use a metaclass?</h3>
+    <p>Set 'metaclass' to it when defining the class.</p>
+<pre><code class="python">class Board(metaclass=BoardMeta):
+    ...
+</code></pre>
+    <p>This means:</p>
+<pre><code class="python">class PowerBoard(Board):
+    ...
+</code></pre>
+    <p>Will call our new __new__ function</p>
+    </section>
+</section>
+<section>
+<h2>Board Meta</h2>
+<pre><code class="python">
+class BoardMeta(type):
+    """
+    Automatically adds the classes to a registry.
+    """
+
+    BOARDS = []
+
+    def __new__(cls, name, bases, attrs):
+        """Instantiate subclass."""
+        cls = type.__new__(cls, name, bases, attrs)
+        BoardMeta.BOARDS.append(cls)
+        return cls
+</code></pre>
+<p>We use BoardMeta to keep a list of all types of board we have</p>
+</section>
+<section>
+    <h3>Master Process</h3>
+    <pre><code>class MasterProcess:
+     """The mighty God object which manages the controllers."""
+    ...
+    </code></pre>
+    <ul>
+        <li> creates/removes boards when they're plugged-in/lost</li>
+        <li> Uses 'BoardMeta.BOARDS' to know what boards are available</li>
+    </ul>
+</section>
+<section>
+    <h3>Board Runner</h3>
+    <ul>
+        <li> One of these per plugged in board </li>
+        <li> Handles speaking to the linux socket (i.e. /var/robotd/motors/*id*)</li>
+    </ul>
+</section>
+<section>
+    <h3> How we detect a new board is inserted?</h3>
+    <ul>
+    <li> Linux! </li>
+    <li> Specifically, 'udev', which handles device plugging in/out </li>
+    <li> Each board has a set of filters ('lookup_keys') for devices it could be interested in</li>
+    <li> A board is created for every matching item</li>
+    </ul>
+</section>
+<section>
+<h2> Example</h2>
+<pre><code class="python" style="min-height:500px">class ExampleBoard(Board):
+
+    lookup_keys = { ... } # What to look for in udev
+
+    enabled = True
+
+    @classmethod
+    def name(cls, node):
+        # Normally this is the serial of the board
+        return 'example'
+
+    def status(self):
+        # Info to send in response to a query to our socket
+        return {'message':"I'm an example!"}
+
+    def command(self, cmd):
+        # called when the board socket is sent a message
+        ... # Do something!
+</code></pre>
+</section>
+<section>
+<h3>Example: Temp sensor</h3>
+<pre><code class="python" style="min-height:650px">class BrainTemperatureSensor(Board):
+    """
+    Raspberry Pi temperature sensor.
+    """
+
+    lookup_keys = {'subsystem': 'thermal'} # Any temp sensor
+
+    enabled = False # Disable it, as this is a demo
+
+    @classmethod
+    def name(cls, node):
+        """Simple node name."""
+        return node.sys_name # The name of the sensor
+
+    def read_temperature_value(self):
+        path = '{}/temp'.format(self.node.sys_path)
+        with open(path) as file:
+            return int(file.read()) # Read the temp sensor
+
+    def status(self):
+        """status of the peripheral."""
+        temp_milli_degrees = self.read_temperature_value()
+        return {'temperature': temp_milli_degrees / 1000}
+</code></pre>
+</section>
+<section>
+<h3> In Practise</h3>
+<pre><code class="python" style="min-height:670px;">class PowerBoard(Board):
+    lookup_keys = {'subsystem': 'usb',
+                   'ID_VENDOR': 'Student_Robotics'}
+
+    @classmethod
+    def included(cls, node): # Extra filter for udev
+        return node['ID_MODEL'] == 'Power_board_v4'
+
+    @classmethod
+    def name(cls, node):
+        return node['ID_SERIAL_SHORT'] # fetched by udev
+
+    def start(self):
+        self.device = ...
+        self.device.open() # Initialise connection to board
+
+    def status(self):
+        return {'start': self.start_btn_status}
+
+    def command(self, cmd):
+        if 'power' in cmd: # Send messages to the board
+            self.device.control_write(cmd['power'])
+        elif 'start-led' in cmd:
+            ...
+</code></pre>
+</section>
+	    		</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
