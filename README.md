@@ -1,4 +1,4 @@
-# sourcebots-dev-presentations
+# SourceBots Development Presentations
 
 Presentations Given internally to SourceBots team members about how
 our software stack works.
