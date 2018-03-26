@@ -12,5 +12,5 @@ our software stack works.
 | [RobotD][robotd] | The heart of the robot code, RobotD. |
 
 
-[overview]: https://adimote.github.io/sourcebots-dev-presentations/overview-presentation
-[robotd]: https://adimote.github.io/sourcebots-dev-presentations/robotd
+[overview]: https://sourcebots.github.io/dev-presentations/overview-presentation
+[robotd]: https://sourcebots.github.io/dev-presentations/robotd
