@@ -1,0 +1,115 @@
+<!doctype html>
+<head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+        <title>reveal.js</title>
+
+        <link rel="stylesheet" href="../reveal-js/css/reveal.css">
+        <link rel="stylesheet" href="../common/purple.css">
+
+        <!-- Theme used for syntax highlighting of code -->
+        <link rel="stylesheet" href="../reveal-js/lib/css/zenburn.css">
+
+        <!-- Printing and PDF exports -->
+        <script>
+                var link = document.createElement( 'link' );
+                link.rel = 'stylesheet';
+                link.type = 'text/css';
+                link.href = window.location.search.match( /print-pdf/gi ) ? '../reveal-js/css/print/pdf.css' : '../reveal-js/css/print/paper.css';
+                document.getElementsByTagName( 'head' )[0].appendChild( link );
+        </script>
+</head>
+<body>
+<div class="reveal">
+        <div class="slides">
+
+
+<!-- BEGIN CONTENT -->
+
+<section>
+        <img src="../common/source_bots_white.svg" class="stretch" style="border:none; background:none; box-shadow:none; margin:20%"/>
+</section>
+<section data-background-color="#000" data-transition="fade">
+        <h1>Robot API</h1>
+</section>
+<section data-background-video="../common/Sourcebots_Bumper-Sting_Masked.mp4">
+</section>
+<section>
+    <img src="software_stack_robot-api.svg" class="stretch" style="background:white"/>
+</section>
+<section>
+    <h2>Robot API</h2>
+    <ul>
+        <li>Students directly use this code</li>
+        <li>Installed on the robots</li>
+        <li>Speaks to robotd</li>
+        <li>Documented in <a href="https://docs.sourcebots.co.uk/">the docs</a></li>
+    </ul>
+</section>
+<section>
+    <h2>Robot-api structure</h2>
+    <img src="robot-api_structure.svg" class="stretch" style="background:white"/>
+</section>
+<section>
+    <img src="robot-api_structure.svg" class="stretch" style="background:white"/>
+    <p> Each board instance connects to `robotd` over unix sockets </p>
+</section>
+<section>
+    <h3> How to use robot-api </h3>
+    <pre><code class="python">import robot
+r = robot.Robot()
+    </code></pre>
+    <p> it's that simple! </p>
+    <p> Then you can use it to i.e. set motors</p>
+    <pre><code class="python">import robot
+# Go forwards
+r.motor_board.m0 = 1
+    </code></pre>
+</section>
+<section>
+    <h3> How does it detect boards? </h3>
+    <p> It does everything lazily, when you call: </p>
+    <pre><code class="python">r.motor_board</code></pre>
+    <p> It then tries to connect to the motor board socket and remembers that it exists.</p>
+</section>
+<section>
+    <h3> Usability trick: Seeing Markers </h3>
+    <p> A common problem with teams is the following code</p>
+    <pre><code class="python">markers = r.see()
+    closest = markers[0]</code></pre>
+    <div class="fragment">
+        <p>What if there are 0 markers?</p>
+        <p>The error is very unreadable for someone new to python:</p>
+        <pre><code class="python">IndexError: list index out of range</code></pre>
+    </div>
+</section>
+<section>
+    <h3>Our Solution</h3>
+    <p>r.see returns something that pretends to be a list.</p>
+    <p>It has all properties of a list, but has a special behaviour if you call:</p>
+    <pre><code class="python">markers[0]</code></pre>
+    <p>if you call it, it errors with "Trying to index an empty list".</p>
+</section>
+
+<!-- END CONTENT -->
+        </div>
+</div>
+
+<script src="../reveal-js/lib/js/head.min.js"></script>
+<script src="../reveal-js/js/reveal.js"></script>
+
+<script>
+        // More info about config & dependencies:
+        // - https://github.com/hakimel/reveal.js#configuration
+        // - https://github.com/hakimel/reveal.js#dependencies
+        Reveal.initialize({
+                dependencies: [
+                        { src: '../reveal-js/plugin/markdown/marked.js' },
+                        { src: '../reveal-js/plugin/markdown/markdown.js' },
+                        { src: '../reveal-js/plugin/notes/notes.js', async: true },
+                        { src: '../reveal-js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+                ]
+        });
+</script>
+</body>
