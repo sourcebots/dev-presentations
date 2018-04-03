@@ -1,0 +1,172 @@
+<!doctype html>
+<head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+        <title>reveal.js</title>
+
+        <link rel="stylesheet" href="../reveal-js/css/reveal.css">
+        <link rel="stylesheet" href="../common/purple.css">
+
+        <!-- Theme used for syntax highlighting of code -->
+        <link rel="stylesheet" href="../reveal-js/lib/css/zenburn.css">
+
+        <!-- Printing and PDF exports -->
+        <script>
+                var link = document.createElement( 'link' );
+                link.rel = 'stylesheet';
+                link.type = 'text/css';
+                link.href = window.location.search.match( /print-pdf/gi ) ? '../reveal-js/css/print/pdf.css' : '../reveal-js/css/print/paper.css';
+                document.getElementsByTagName( 'head' )[0].appendChild( link );
+        </script>
+</head>
+<body>
+<div class="reveal">
+        <div class="slides">
+
+
+<!-- BEGIN CONTENT -->
+
+<section>
+        <img src="../common/source_bots_white.svg" class="stretch" style="border:none; background:none; box-shadow:none; margin:20%"/>
+</section>
+<section data-background-color="#000" data-transition="fade">
+        <h1>SB Vision</h1>
+</section>
+<section data-background-video="../common/Sourcebots_Bumper-Sting_Masked.mp4">
+</section>
+<section>
+    <img src="software_stack_sb_vision.svg" class="stretch" style="background:white"/>
+</section>
+<section>
+    <h2> What does sb_vision do?</h2>
+    <ul>
+        <li> Handles capturing from any camera (that shows up in /dev/videoX)</li>
+        <li> Recognises markers and gets information from them</li>
+    </ul>
+</section>
+<section>
+<section>
+    <h3> How to use sb_vision </h3>
+    <p> The following is from robotd:</p>
+    <pre><code class="python">self.camera = Camera(
+    int(self.node['MINOR']), # 0 (from /dev/video0)
+    self.IMAGE_SIZE, # (1280,720)
+    self.DISTANCE_MODEL, # 'C016' (camera model)
+)
+self.vision = Vision(self.camera)
+...
+markers = vision.snapshot()
+    </code></pre>
+    <p> Capturing an image is very easy!</p>
+</section>
+<section>
+    <h3> How to use sb_vision </h3>
+    <pre><code class="python">camera = FileCamera(
+    'image.png', # image to use
+    'C016', # camera model (for distances)
+)
+vision = Vision(self.camera)
+markers = vision.snapshot()
+    </code></pre>
+    <p> It's even easier with a file camera!</p>
+</section>
+<section>
+<p> Or you can just use the command line interface...</p>
+<pre><code class="bash">python -m sb_vision summarise -m C016 image.png</code></pre>
+<p> will give you a summary of the markers it can see</p>
+</section>
+</section>
+<section>
+    <img src="sb_vision.svg" class="stretch" style="background:white"/>
+    <ul>
+        <li><code>apriltags</code> detects the markers, outputs their pixel corner co-ords and ID</li>
+        <li><code>cvcapture</code> handles image capturing</li>
+        <li><code>cv3d</code>      handles converting pixel corner co-ords to a 3d location</li>
+    </ul>
+</section>
+<section>
+<section>
+    <h2>Aside: How do the c bindings work?</h2>
+</section>
+<section>
+<p> cvcapture_build.py <p>
+<pre><code class="python" style="min-height:670px;">
+#!/usr/bin/env python3
+import cffi
+
+ffibuilder = cffi.FFI() # make the builder
+
+# definitions of c functions you want to call
+CVCAPTURE_DECLS = """
+    void* cvopen(const int path);
+"""
+
+ffibuilder.set_source(
+    "_cvcapture",
+    CVCAPTURE_DECLS,
+    sources=['cvcapture.cpp'], # file with the C++ to call
+    libraries=[
+    # Any c++ libraries you need to compile the above file
+        'opencv_core',
+    ],
+)
+
+ffibuilder.cdef(CVCAPTURE_DECLS) # Define them
+
+# Finally, compile some C++
+ffibuilder.compile(verbose=True)
+</pre></code>
+</section>
+<section>
+<p> This python file makes a file named '_cvcapture.o'<p>
+<p> Which can then be imported straight into python with <pre><code>import _cvcapture</code></pre></p>
+<p> it's that easy! <p>
+</section>
+</section>
+<section>
+    <h3>What does sb-vision send to robotd?</h3>
+    <pre><code class="python" style="min-height:570px;">token = vision.snapshot()[0]
+token.id : int # Marker id
+# Apriltags certainty of the marker ID (always 0 for now)
+token.certainty : int
+# The transform matrix of the markers in 2D
+token.homography_matrix : ?
+# list of 4 2D co-ordinates of pixel locations
+token.pixel_corners : List[PixelCoordinate]
+
+# Below only exist if there is a valid camera model
+# Cartesian co-ordinate of marker in 3D
+token.cartesian : Cartesian
+# Spherical co-ordinate of marker in 3D
+token.spherical : Spherical
+
+# Below will hopefully be removed next competition
+# LEGACY Polar co-ordinate of marker
+token.polar : Polar
+# same as above, different name to not break compatibility.
+token.legacy_polar : Polar
+    </code></pre>
+</section>
+
+<!-- END CONTENT -->
+        </div>
+</div>
+
+<script src="../reveal-js/lib/js/head.min.js"></script>
+<script src="../reveal-js/js/reveal.js"></script>
+
+<script>
+        // More info about config & dependencies:
+        // - https://github.com/hakimel/reveal.js#configuration
+        // - https://github.com/hakimel/reveal.js#dependencies
+        Reveal.initialize({
+                dependencies: [
+                        { src: '../reveal-js/plugin/markdown/marked.js' },
+                        { src: '../reveal-js/plugin/markdown/markdown.js' },
+                        { src: '../reveal-js/plugin/notes/notes.js', async: true },
+                        { src: '../reveal-js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+                ]
+        });
+</script>
+</body>
